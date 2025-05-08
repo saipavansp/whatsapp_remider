@@ -13,13 +13,14 @@ const moment = require("moment-timezone");
 
 // Configuration constants
 const WHATSAPP_ACCESS_TOKEN =
-  process.env.WHATSAPP_ACCESS_TOKEN;
-const WEBHOOK_VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
-const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID; // Replace with your actual phone number ID
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Replace with your Gemini API key
+  "EAAJU17wadOUBO6OSZASiKp6e4UZCj6ZBcebyZBBdQajul1zyzhWFPkblqXAQhZCepcEZAWlJBbgSTkmlBSSZAXmldt9Yl4ZAn2ZA3kl7XJsli43Fzihc8kIR0brDKGfrVvIy4IjRPpuIuqV7vHcTs6iqaS2otZBBK28ZCK3MdahfczPfcQiJ4UGII3PRhhlaP0gQP2pCQZDZD";
+const WEBHOOK_VERIFY_TOKEN = "my-verify-token";
+const PHONE_NUMBER_ID = "696349263551599"; // Replace with your actual phone number ID
+const GEMINI_API_KEY = "AIzaSyAciVTIEXqmjinAmQERiBecrHOAIRvdqjo"; // Replace with your Gemini API key
 const MONGODB_URI =
-  process.env.MONGODB_URI;
-const DEFAULT_TIMEZONE = process.env.DEFAULT_TIMEZONE; // IST timezone
+  "mongodb+srv://saipavansp242:XdMlz6oMFM3ugsRz@whastapp.uskziwp.mongodb.net/";
+const DEFAULT_TIMEZONE = "Asia/Kolkata"; // IST timezone
+
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
