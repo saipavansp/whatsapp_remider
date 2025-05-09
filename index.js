@@ -132,7 +132,7 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
 app.get("/", (req, res) => {
-  res.send("Advanced WhatsApp Chatbot with Gemini AI");
+  res.send("Advanced WhatsApp Chatbot ");
 });
 
 app.get("/webhook", (req, res) => {
