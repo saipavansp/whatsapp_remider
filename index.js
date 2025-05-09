@@ -1548,7 +1548,7 @@ async function processMessageWithAI(conversation, mediaType, mediaUrl) {
     // If we're processing an image or document
     if (mediaType === "image" || mediaType === "document") {
       // Use the Vision model for images and documents
-      model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+      model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
       // Prepare content parts
       const contentParts = [];
