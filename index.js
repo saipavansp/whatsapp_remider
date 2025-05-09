@@ -13,14 +13,13 @@ const moment = require("moment-timezone");
 
 // Configuration constants
 const WHATSAPP_ACCESS_TOKEN =
-  "EAAJU17wadOUBO6OSZASiKp6e4UZCj6ZBcebyZBBdQajul1zyzhWFPkblqXAQhZCepcEZAWlJBbgSTkmlBSSZAXmldt9Yl4ZAn2ZA3kl7XJsli43Fzihc8kIR0brDKGfrVvIy4IjRPpuIuqV7vHcTs6iqaS2otZBBK28ZCK3MdahfczPfcQiJ4UGII3PRhhlaP0gQP2pCQZDZD";
-const WEBHOOK_VERIFY_TOKEN = "my-verify-token";
-const PHONE_NUMBER_ID = "696349263551599"; // Replace with your actual phone number ID
-const GEMINI_API_KEY = "AIzaSyAciVTIEXqmjinAmQERiBecrHOAIRvdqjo"; // Replace with your Gemini API key
+  process.env.WHATSAPP_ACCESS_TOKEN;
+const WEBHOOK_VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID; // Replace with your actual phone number ID
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY; // Replace with your Gemini API key
 const MONGODB_URI =
-  "mongodb+srv://saipavansp242:XdMlz6oMFM3ugsRz@whastapp.uskziwp.mongodb.net/";
-const DEFAULT_TIMEZONE = "Asia/Kolkata"; // IST timezone
-
+  process.env.MONGODB_URI;
+const DEFAULT_TIMEZONE = process.env.DEFAULT_TIMEZONE; // IST timezone
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
@@ -132,7 +131,7 @@ app.use(express.json());
 app.use("/uploads", express.static("uploads"));
 
 app.get("/", (req, res) => {
-  res.send("Advanced WhatsApp Chatbot ");
+  res.send("Advanced WhatsApp Chatbot with Gemini AI");
 });
 
 app.get("/webhook", (req, res) => {
@@ -218,7 +217,7 @@ app.post("/webhook", async (req, res) => {
 
         // Try to detect if this image contains event information
         const eventDetails = await extractEventFromMedia(mediaUrl, "image");
-        if (eventDetails && eventDetails.confidence >= 0.75) {
+        if (eventDetails && eventDetails.confidence >= 0.7) {
           console.log(`Detected event from image: ${eventDetails.eventName}`);
 
           // Format event details for display
@@ -262,8 +261,7 @@ app.post("/webhook", async (req, res) => {
           // Send notification to user
           await sendMessage(
             userId,
-            `✅ I've added "${eventDetails.eventName}" to your calendar for ${dayOfWeek}, ${eventDate.format("MMMM D, YYYY")} at ${eventDetails.eventTime || "all day"} ${eventDetails.eventLocation ? `at ${eventDetails.eventLocation}` : ""}.\n\nHere are the details I extracted:\n\n` +
-              detailsMessage.join("\n"),
+            `✅ Added "${eventDetails.eventName}" to your calendar for ${dayOfWeek}, ${eventDate.format("MMMM D, YYYY")} at ${eventDetails.eventTime || "all day"} ${eventDetails.eventLocation ? `at ${eventDetails.eventLocation}` : ""}.\n\nI'll remind you when it's time.`,
           );
           // Stop further processing for this image message as event has been created
           res.status(200).send("Webhook processed");
@@ -1552,13 +1550,19 @@ async function processMessageWithAI(conversation, mediaType, mediaUrl) {
 
       // Prepare content parts
       const contentParts = [];
-      contentParts.push({
-        text: `Previous conversation:\n${contextText}\n\nPlease analyze this and respond appropriately:${
-          eventAlreadyCreated 
-            ? "\n\nNOTE: I've already created an event from this image, so don't ask about adding it to the calendar." 
-            : ""
-        }`,
-      });
+      
+      // If an event was already created, don't try to create another one
+      if (eventAlreadyCreated) {
+        contentParts.push({
+          text: `Previous conversation:\n${contextText}\n\nPlease analyze this and respond appropriately:\n\nNOTE: I've already created an event from this image, so don't ask about adding it to the calendar.`,
+        });
+      } else {
+        // For images that might contain events but weren't detected automatically
+        // Use a more direct prompt that extracts event info instead of offering options
+        contentParts.push({
+          text: `Previous conversation:\n${contextText}\n\nThis appears to be an image containing event information. Please extract the following details:\n- Event name\n- Date and time\n- Location\n- Any other important details\n\nRespond with only the extracted information in a concise format. Don't offer multiple options or ask if I want to add it to my calendar.`,
+        });
+      }
 
       // Add the media if available
       if (mediaUrl) {
@@ -2126,25 +2130,25 @@ async function extractEventFromMedia(mediaUrl, mediaType) {
     const prompt = `
       You are an AI assistant that extracts event information from ${mediaType}s.
 
-      Carefully analyze this ${mediaType} and identify if it contains information about an event, meeting, 
-      appointment, or any scheduled activity.
+      IMPORTANT: This ${mediaType} very likely contains event information like a flyer, poster, or invitation.
+      Your task is to extract all the key event details with high confidence.
 
-      If this ${mediaType} contains an event, extract the following details:
-      - Event name or title
-      - Date of the event
-      - Time of the event
-      - Location of the event
+      Carefully analyze this ${mediaType} and extract the following details:
+      - Event name or title (REQUIRED)
+      - Date of the event (REQUIRED - in YYYY-MM-DD format)
+      - Time of the event (start and end times if available)
+      - Location of the event (venue name and/or address)
       - Organizer or host information
       - Any website or registration URL
       - Contact phone numbers
       - Any additional context like descriptions, sponsors, etc.
 
-      Focus on key details like:
-      - Event posters or flyers
-      - Invitations
-      - Calendar entries
-      - Announcements
-      - Any text that includes dates, times, and event descriptions
+      Event extraction guidelines:
+      1. ALWAYS assume this is an event announcement unless clearly proven otherwise
+      2. If you see a QR code, mention that it likely contains registration information
+      3. Focus on key details that would be needed to add this to a calendar
+      4. For dates with just day and month but no year, use ${currentYear} as the default year
+      5. Convert all dates to YYYY-MM-DD format
 
       Format your response as ONLY valid JSON with these fields:
       {
@@ -2157,22 +2161,12 @@ async function extractEventFromMedia(mediaUrl, mediaType) {
         "eventContact": "contact information if available",
         "eventDescription": "brief description or context of the event",
         "category": "work", "personal", "social" or "other",
-        "confidence": number between 0 and 1 indicating confidence level
+        "confidence": 0.95
       }
 
-      If NO event information is found, return:
-      {
-        "eventFound": false
-      }
-
-      IMPORTANT CONTEXT:
-      - Today's date: ${now.format("YYYY-MM-DD")} (${now.format("dddd, MMMM D")})
-      - Current year: ${currentYear}
-
-      EXTRACTION RULES:
-      - ALWAYS include the year in the date, using the specified year or current year if not specified
-      - Extract time in 12-hour format if available, or "All day" if no time
-      - Be confident in your extraction but don't invent details not present in the ${mediaType}
+      IMPORTANT: This is for a reminder system. We NEED to extract this information to add it to the user's calendar.
+      If you see ANY indication of an event, set confidence to at least 0.8.
+      Only use "eventFound": false if there is absolutely no event-related content in the image.
     `;
 
     // Prepare the content for Gemini Vision
@@ -2217,6 +2211,11 @@ async function extractEventFromMedia(mediaUrl, mediaType) {
     // Set default confidence if not provided
     if (!parsedResponse.confidence) {
       parsedResponse.confidence = 0.8;
+    }
+
+    // Force higher confidence for obvious events
+    if (parsedResponse.eventName && parsedResponse.eventDate) {
+      parsedResponse.confidence = Math.max(parsedResponse.confidence, 0.75);
     }
 
     console.log(`Extracted event details from ${mediaType}:`, parsedResponse);
